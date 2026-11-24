@@ -133,15 +133,6 @@ followed by:
 
 **What I did:** I kept the command you specified and documented this behaviour in the README. I did not change the design to allow a separate output folder.
 
-### Request 13: Detailed README
-
-**My prompt:**
-> hey make a detailed readme.md file where the project structure the components developed the way in whcih it is developed the physical process it depics how it is implemented the normal steps to run the script tthe outputs delivered the entire detailing of the project with addon of docker based containerisation as a add on feature to run it up in my envi
-
-**Response (summary):** A README covering the project structure, the physics, the components, the control logic, the scenario, the outputs, the local steps, and the Docker add-on. The assistant also ran a seeded example, so the README could show a real run with example graphs.
-
-**What I did:** I used the README as the project documentation.
-
 ---
 
 ## 3. Changes I made to the AI's output, and why
@@ -152,7 +143,6 @@ followed by:
 | The rebuilt `Simulator.py` after the undo (Request 5) | Checked it | The assistant rebuilt the file from memory, so I could not rely on it without checking. |
 | A reclose threshold of 50.30 Hz (Request 1) | Used 50.35 Hz | The reclose threshold has to stay below the 50.38 Hz ceiling, so the peak stays under 50.50 Hz. 50.35 Hz meets that, and it keeps the breaker open a little longer. |
 | Restart and trip logic in the scenario (Request 9) | Moved the restart into the controller | Only the controller should restart the generator. The scenario should only trip it. |
-| Random trip times with no limits (Request 11) | Added the spacing rule, unique times and log messages | Without them, trips could be lost without any message. |
 | Output that goes to the mounted folder (Request 12) | Kept, and documented | You asked for this command, and the README explains the constraint. |
 | Rounding of the frequency | Not applied yet | Seven steps of -0.05 Hz from 50 gives `49.65000000000002`, which is not `<= 49.65`, so the breaker opened one second late at 49.60 Hz. The README describes this. |
 | The first README, which included untested platform notes | Edited in later versions | The README should only describe the project as it is. |
