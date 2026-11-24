@@ -19,10 +19,6 @@ The simulator runs in 1-second steps over a duration you choose. It produces two
 11. [Docker containerisation (add-on)](#11-docker-containerisation-add-on)
 12. [Verification performed](#12-verification-performed)
 13. [Design assumptions](#13-design-assumptions)
-14. [Behaviour notes](#14-behaviour-notes)
-15. [Development history: build, break, fix](#15-development-history-build-break-fix)
-16. [AI-assisted development](#16-ai-assisted-development)
-17. [Glossary](#17-glossary)
 
 ---
 
@@ -670,63 +666,3 @@ These checks were run as ad-hoc scripts, in temporary copies of the project with
 12. **Breaker and generator interaction.** The breaker can be opened with the generator OFF. It is only reclosed with the generator ON.
 
 ---
-
-## 14. Behaviour notes
-
-These are properties of the current implementation that affect how to read the results.
-
-| Behaviour | Effect |
-|---|---|
-| **The frequency is stored as raw floats.** After seven steps of -0.05 from 50, Python gives `49.65000000000002`, which is not `<= 49.65`. | A threshold can trigger one second later than calculated. In the example run the breaker opened at 49.60 Hz and not at 49.65 Hz. The console output also shows values such as `49.900000000000006`. |
-| **FS101 holds the true frequency.** The controller reads the sensor, and the sensor value is the true bus frequency. | The reading is always exact. Sensor faults are not simulated. |
-| **There is no load class and no controller class.** | The load is represented by the breaker state, and the control logic is the block of `if` statements in the loop. |
-| **The constants are fixed in `Simulator.py`:** 49.65, 50.35 and `RESTART_DELAY = 3`. | Changing a threshold means editing the file. |
-| **The trip times are not seeded.** | The same inputs give different trip times on each run. |
-| **The loop waits one real second per simulated second.** | A run takes as long as the duration you enter. Comment out `time.sleep(1)` to skip the wait. |
-| **Input is interactive.** | The program asks two questions on every run. The answers can be piped in (see [section 11.5](#115-running-without-typing-the-answers)). |
-| **The simulator does not check for limit violations itself.** | Violations are found by reading the graphs. |
-| **There is no automated test suite in the repository.** | The checks in [section 12](#12-verification-performed) were run as separate temporary scripts. |
-| **The legend uses matplotlib's default placement.** | In some runs it covers part of the frequency curve. |
-| **The Docker image copies the whole project folder**, including `.env/`. | The image built during testing used about 690 MB on disk. |
-| **Output goes to the folder mounted on `/app`.** | With the Docker command, the graphs always appear in the project folder. |
-
----
-
-## 15. Development history: build, break, fix
-
-The simulator was built in small steps. Each step was run, looked at, and fixed when it was wrong.
-
-| Step | What was built | What went wrong | What fixed it |
-|---|---|---|---|
-| 1 | The first component classes and a mental model of the physics | The sensor was changing the frequency itself, some methods lacked `self`, file names did not match imports, and the generator started OFF | Corrected the classes and set the generator ON at start |
-| 2 | A frequency graph with limit lines, and a simple rule: open the breaker below 49.50 Hz | The frequency dipped to about 49.45 Hz, because the rule acted after the limit was crossed. The breaker was never closed again | The rule was moved earlier (see step 5) |
-| 3 | A step graph for the generator and breaker states | It showed the breaker stuck OPEN after about 11 seconds, which exposed the missing reclose rule | A reclose rule was added |
-| 4 | The +0.12 Hz rate for generator ON with breaker OPEN | The frequency was frozen at about 49.57 Hz, because the rise only applied on the tick where the limit was crossed. After that fix it ran away to about 51.8 Hz, because nothing closed the breaker | One rate chosen per second from the states, plus a reclose rule |
-| 5 | Open at 49.65 Hz, close at 50.35 Hz | The first opening came at 49.60 Hz instead of 49.65 Hz, because of floating-point rounding | Left as it is, and described in [section 14](#14-behaviour-notes) |
-| 6 | Scripted generator trips | The scenario was also turning the generator back on, so the controller was not really restarting it | The restart moved into the controller (a 3-second timer). The scenario only trips |
-| 7 | Reclose rule with a generator check | It had no visible effect in the scripted run | Kept as a safety rule: the load is never reconnected to a stopped generator |
-| 8 | Interactive duration and random trips | Trips could duplicate, land on an already-OFF generator, or fall in the last second, so some would silently disappear | Unique times, a minimum gap, no trips in the last second, a shortfall message, and a log line per trip |
-| 9 | Docker | A mount of an empty folder made the container fail. A first test under `/tmp` looked empty because Docker Desktop did not share that path | Documented that the command must run from the project folder, and that the folder must be shared with Docker Desktop |
-
----
-
-## 16. AI-assisted development
-
-An AI coding assistant (the agent in the Cursor editor) was used during development. It helped to explain the physical process, review the code and graphs, find the bugs listed in [section 15](#15-development-history-build-break-fix), propose the control rules, and check changes by running them in temporary copies of the project. The design decisions and the final code were the author's.
-
----
-
-## 17. Glossary
-
-| Term | Meaning |
-|---|---|
-| Bus | The shared electrical connection that the generator and the load attach to |
-| Frequency | The rotation speed of the generator, expressed in hertz |
-| Over-frequency | Frequency strictly above 50.50 Hz |
-| Under-frequency | Frequency strictly below 49.50 Hz |
-| Trip | The generator shutting down unexpectedly |
-| Hysteresis | Using different thresholds for opening and closing, to stop rapid switching |
-| Sawtooth | The repeating slow-fall, fast-rise shape of the frequency in normal operation |
-| Sample | One recorded set of values (frequency, generator state, breaker state) at one second |
-| Tick | One pass through the simulation loop, equal to one simulated second |
-| Mount (`-v`) | Making a host folder visible inside a container |
